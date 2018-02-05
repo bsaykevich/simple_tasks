@@ -12,5 +12,6 @@ import java.io.FileInputStream;
 public class Solution {
     public static void main(String[] args) {
         // напишите тут ваш код
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     }
 }
