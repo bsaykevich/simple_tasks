@@ -1,11 +1,14 @@
 package facultyModel;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 
-public class Group {
-    //array holds students` values
+public class Group /*throws FacultyException*/{
+
    private Student[] students;
+   private String name;
+   private int course;
 
    //TODO: add groupNumber and its assignment for every student in group
     //TODO: add int courseNumber. Add 'upgrade()'. 'course' value must suit for every student in group
@@ -13,55 +16,50 @@ public class Group {
     public Group() {
         super();
         students = new Student[10];
+        name = "undefined";
+        course = 0;
     }
 
     public Group(int groupSize){
-        students = new Student[groupSize];
+        this(groupSize, "undefined", 0);
     }
 
-    public Group(Student[] students) {
+    public Group(int groupSize, String name, int course){
+        this(new Student[groupSize], name, course);
+    }
+
+    public Group(Student[] students, String name, int course) {
         this.students = students;
+        this.name = name;
+        this.course = course;
         repack();
+    }
+
+    public String getName() {
+
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getCourse() {
+        return course;
+    }
+
+    public void setCourse(int course) {
+        this.course = course;
     }
 
     public Student[] getStudents() {
         return students;
     }
 
-    //writes
-    public void toFile(String fileName){
-
-        try(BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))){
-            /*for(int i = 0; i < 10; i++){
-                writer.write(students[i].toString());
-            }*/
-            writer.write(toString());
-        } catch (IOException e){
-            e.printStackTrace();
-        }
+    public void setStudents(Student[] students) {
+        this.students = students;
     }
 
-    public Group fromFile(String fileName){
-
-        Student[] newStudents = new Student[10];
-        int arrIndex = 0;
-
-        try(BufferedReader reader = new BufferedReader(new FileReader(fileName))){
-            String line = new String();
-            while ((line = reader.readLine()) != null){
-                // TODO: parse line to args
-                //String[] args = line.split("=");
-
-                // TODO: create new Student and add to newStudents
-                if (arrIndex < 10) {
-                    arrIndex++;
-                }
-            }
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-        return new Group(newStudents);
-    }
 
     public int size(){
         int numberOfStudents = 0;
@@ -73,6 +71,7 @@ public class Group {
         }
         return numberOfStudents;
     }
+
 
     public boolean hasStudent(Student student){
 
@@ -98,6 +97,8 @@ public class Group {
         for(int i = 0; i <= students.length; i++){
             if(students[i] == null){
                 students[i] = student;
+                students[i].setCourse(this.getCourse());
+                students[i].setGroupName(this.getName());
                 return;
             }
         }
@@ -110,6 +111,7 @@ public class Group {
         }
         for(int i = 0; i < students.length; i++){
             if (students[i].equals(student)){
+                students[i].setGroupName("noGroup");
                 students[i] = null;
                 if(i != students.length-1) {
                     System.arraycopy(students, i+1, students, i, students.length-1 - i);
@@ -140,13 +142,107 @@ public class Group {
         }
     }
 
+    //writes
+    public void toFile(String fileName){
+
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))){
+            /*for(int i = 0; i < 10; i++){
+                writer.write(students[i].toString());
+            }*/
+            writer.write(toString());
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    public Group fromFile(String fileName){
+
+        //ArrayList to hold students before create new Group
+        ArrayList<Student> newStudents = new ArrayList<>();
+
+        //read file and parse Students` param values from Strings
+        try(BufferedReader reader = new BufferedReader(new FileReader(fileName))){
+            String groupName;
+            int course;
+            String line;
+
+            if((line = reader.readLine()) != null){
+                int indexGroupStart = line.indexOf(":");
+                int indexGroupFin = line.indexOf("course:") - 2;
+                groupName = line.substring(indexGroupStart, indexGroupFin);
+
+                int indexCourseStart = indexGroupFin + 6;
+                int indexCourseFin = line.indexOf("course:") - 2;
+                course = Integer.valueOf(line.substring(indexCourseStart, line.length()).trim());
+            }else {
+                System.out.println("The file is empty");
+                return null;
+            }
+            while ((line = reader.readLine()) != null){
+                if(!line.trim().startsWith("Student:")){
+                    continue;
+                }
+
+                // String array to hold parsed Student`s param values before create new Student
+                String[] studParams = new String[Student.PARAM_NUMBER];
+                int eqPos = 0;
+                int comaPos = 0;
+
+                for (int i = 0; i < Student.PARAM_NUMBER - 2; i++) {
+                    eqPos = line.indexOf('=');
+
+                    if(eqPos == -1){
+                        throw new FacultyException("Incorrect input data");
+                    }
+
+                    comaPos = line.indexOf(',', eqPos);
+                    if(comaPos == -1){
+                        comaPos = line.length();
+                    }
+
+                    studParams[i] = line.substring(eqPos, comaPos).trim();
+                }
+
+                //create new Student and add it to ArrayList
+                try {
+                    String name = studParams[1];
+                    String surname = studParams[2];
+                    int age = Integer.valueOf(studParams[3]);
+                    boolean sex = studParams[4].equals("male");
+                    if (!studParams[4].equals("female")) {
+                        throw new FacultyException("Illegal sex value");
+                    }
+
+                    newStudents.add(new Student(name, surname, age, sex, course, groupName));
+                } catch (IndexOutOfBoundsException e){
+                    throw new FacultyException("Illegal student params in file");
+                }
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        //create new Group and add Students
+        Group groupFromFile = new Group(newStudents.size());
+
+        for(int i = 0; i < newStudents.size(); i++){
+            groupFromFile.addStudent(newStudents.get(i));
+        }
+        return groupFromFile;
+    }
+
+
+
     //TODO: add sorting algorithms by name, surname and age
 
 
     @Override
     public String toString() {
         repack();
-        StringBuilder sb = new StringBuilder("Group:");
+        StringBuilder sb = new StringBuilder("Group: ");
+        sb.append(name);
+        sb.append(", course: ");
+        sb.append(course);
         sb.append(System.lineSeparator());
         for (int i = 0; i < size(); i++){
             sb.append(students[i].toString());
